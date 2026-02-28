@@ -1,178 +1,111 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/context/AuthContext';
-import { getTeams } from '@/api';
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/context/AuthContext'
+import { getTeams } from '@/api'
 
 interface Team {
-  team_id: string;
-  name: string;
-  sport?: string;
-  league?: string;
-  country?: string;
+  team_id: string
+  name: string
+  sport?: string
+  league?: string
+  country?: string
 }
 
 export default function Dashboard() {
-  const { user, logout, token } = useAuthStore();
-  const navigate = useNavigate();
-
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loadingTeams, setLoadingTeams] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, token } = useAuthStore()
+  const navigate = useNavigate()
+  const [teams, setTeams] = useState<Team[]>([])
+  const [loadingTeams, setLoadingTeams] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) {
-      navigate('/login', { replace: true });
+      navigate('/login', { replace: true })
+      return
     }
-  }, [token, navigate]);
-
-  
-  useEffect(() => {
-    if (!token) return;
-
     const fetchTeams = async () => {
       try {
-        setLoadingTeams(true);
-        setError(null);
-        const res = await getTeams();
-        setTeams(res.data || []);
-      } catch (err: any) {
-        console.error('Failed to load teams:', err);
-        setError(err.response?.data?.error || 'Failed to load teams');
+        setLoadingTeams(true)
+        setError(null)
+        const res = await getTeams()
+        setTeams(res.data || [])
+      } catch (err: unknown) {
+        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load teams')
       } finally {
-        setLoadingTeams(false);
+        setLoadingTeams(false)
       }
-    };
+    }
+    fetchTeams()
+  }, [token, navigate])
 
-    fetchTeams();
-  }, [token]);
-
-  if (!token) return null;
+  if (!token) return null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-5">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Player Metrics
-              </h1>
-              <span className="ml-3 text-sm text-gray-500">
-                Dashboard
-              </span>
-            </div>
+    <div>
+      <h1 className="platform-page-title">
+        Welcome back, {user?.email?.split('@')[0] || 'User'}
+      </h1>
+      <p className="platform-page-subtitle">
+        Overview of your teams and player data. Manage users in the Users section.
+      </p>
 
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700 hidden sm:block">
-                {user?.email || 'User'}
-              </span>
-              <button
-                onClick={() => {
-                  logout();
-                  navigate('/login', { replace: true });
-                }}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
+      <div className="platform-card" style={{ marginBottom: '1.5rem' }}>
+        <div className="platform-card-header">Your Teams</div>
+        {loadingTeams ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--platform-text-muted)' }}>
+            Loading teams...
           </div>
-        </div>
-      </header>
+        ) : error ? (
+          <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--platform-danger)' }}>
+            <p style={{ margin: 0 }}>{error}</p>
+            <button type="button" className="platform-btn platform-btn-secondary" style={{ marginTop: '0.75rem' }} onClick={() => window.location.reload()}>
+              Try again
+            </button>
+          </div>
+        ) : teams.length === 0 ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--platform-text-muted)' }}>
+            <p style={{ margin: 0 }}>No teams found.</p>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem' }}>You may need to be assigned to a team by an administrator.</p>
+          </div>
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {teams.map((team: Team) => (
+              <li key={team.team_id} style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--platform-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 500, color: 'var(--platform-text)' }}>{team.name}</p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--platform-text-muted)' }}>
+                      {team.sport || 'Football'} • {team.league || 'N/A'} • {team.country || 'N/A'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="platform-btn platform-btn-primary"
+                    onClick={() => navigate(`/dashboard/team/${team.team_id}/players`)}
+                  >
+                    View Players
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Welcome & quick stats */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Welcome back, {user?.email?.split('@')[0] || 'User'}
-          </h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Here's an overview of your teams and player data
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+        <div className="platform-card" style={{ padding: '1.25rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>Recent Activity</h3>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--platform-text-muted)' }}>
+            Coming soon: player readiness updates, alerts, etc.
           </p>
         </div>
-
-        {/* Teams section */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Your Teams
-            </h3>
-          </div>
-
-          {loadingTeams ? (
-            <div className="px-6 py-12 text-center text-gray-500">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-              <p>Loading teams...</p>
-            </div>
-          ) : error ? (
-            <div className="px-6 py-8 text-center text-red-600">
-              <p>{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-4 text-sm text-indigo-600 hover:text-indigo-800"
-              >
-                Try again
-              </button>
-            </div>
-          ) : teams.length === 0 ? (
-            <div className="px-6 py-12 text-center text-gray-500">
-              <p>No teams found.</p>
-              <p className="mt-2 text-sm">
-                You may need to be assigned to a team by an administrator.
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {teams.map((team) => (
-                <li key={team.team_id} className="px-6 py-5 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {team.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {team.sport || 'Football'} • {team.league || 'N/A'} • {team.country || 'N/A'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                     
-                        alert(`Selected team: ${team.name}`);
-                      }}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      View Players
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="platform-card" style={{ padding: '1.25rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>Quick Actions</h3>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--platform-text-muted)' }}>
+            <Link to="/users">Manage users</Link> to assign roles and teams.
+          </p>
         </div>
-
-       
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Recent Activity
-            </h3>
-            <p className="text-sm text-gray-500">
-              Coming soon: player readiness updates, alerts, etc.
-            </p>
-          </div>
-
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Quick Stats
-            </h3>
-            <p className="text-sm text-gray-500">
-              Coming soon: recovery trends, workload ratios...
-            </p>
-          </div>
-        </div>
-      </main>
+      </div>
     </div>
-  );
+  )
 }
