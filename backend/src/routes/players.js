@@ -1,13 +1,29 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { authenticateToken, loadUser } = require('../middleware/auth');
+const { requirePermission } = require('../permissions');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
+// GET /players – list players (by team). Player role sees only themselves.
+router.get('/', authenticateToken, loadUser, (req, res) => {
   const db = req.app.locals.db;
   const { team_id } = req.query;
+  const { role, playerId } = req.user;
 
   try {
+    if (role === 'player') {
+      if (!playerId) return res.json([]);
+      const player = db.prepare(`
+        SELECT p.player_id, p.first_name, p.last_name, p.position, p.jersey_number,
+               p.height_cm, p.weight_kg, p.is_active, t.name AS team_name
+        FROM players p
+        LEFT JOIN teams t ON p.team_id = t.team_id
+        WHERE p.player_id = ? AND p.is_active = 1
+      `).get(playerId);
+      return res.json(player ? [player] : []);
+    }
+
     let query = `
       SELECT p.player_id, p.first_name, p.last_name, p.position, p.jersey_number,
              p.height_cm, p.weight_kg, p.is_active, t.name AS team_name
@@ -16,12 +32,10 @@ router.get('/', (req, res) => {
       WHERE p.is_active = 1
     `;
     const params = [];
-
     if (team_id) {
       query += ' AND p.team_id = ?';
       params.push(team_id);
     }
-
     query += ' ORDER BY p.last_name ASC, p.first_name ASC';
 
     const players = db.prepare(query).all(...params);
@@ -31,7 +45,8 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+// POST /players – create player (admin only)
+router.post('/', authenticateToken, loadUser, requirePermission('manage_teams'), (req, res) => {
   const db = req.app.locals.db;
   const {
     team_id, first_name, last_name, date_of_birth, gender,
@@ -48,7 +63,6 @@ router.post('/', (req, res) => {
   }
 
   const playerId = uuidv4();
-
   try {
     db.prepare(`
       INSERT INTO players (

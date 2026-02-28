@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/context/AuthContext'
-import { getUsers, updateUser } from '@/api'
-import { getTeams } from '@/api'
+import { getUsers, updateUser, getTeams, getPlayers } from '@/api'
+import { ROLES } from '@/utils/permissions'
 
 interface UserRow {
   user_id: string
@@ -10,6 +10,7 @@ interface UserRow {
   last_name: string | null
   role: string
   team_id: string | null
+  player_id: string | null
   team_name: string | null
   is_active: number
   last_login: string | null
@@ -21,14 +22,12 @@ interface Team {
   name: string
 }
 
-const ROLES = [
-  'player',
-  'medical_staff',
-  'fitness_coach',
-  'coach',
-  'head_coach',
-  'performance_analyst',
-]
+interface Player {
+  player_id: string
+  first_name: string
+  last_name: string
+  team_name?: string
+}
 
 export default function UsersPage() {
   const { token } = useAuthStore()
@@ -37,7 +36,8 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<{ role: string; team_id: string }>({ role: '', team_id: '' })
+  const [editForm, setEditForm] = useState<{ role: string; team_id: string; player_id: string }>({ role: '', team_id: '', player_id: '' })
+  const [players, setPlayers] = useState<Player[]>([])
 
   const loadUsers = async () => {
     try {
@@ -59,15 +59,25 @@ export default function UsersPage() {
     }
   }
 
+  const loadPlayers = async () => {
+    try {
+      const res = await getPlayers()
+      setPlayers(Array.isArray(res.data) ? res.data : [])
+    } catch {
+      setPlayers([])
+    }
+  }
+
   useEffect(() => {
     if (!token) return
     loadUsers()
     loadTeams()
+    loadPlayers()
   }, [token])
 
   const startEdit = (u: UserRow) => {
     setEditingId(u.user_id)
-    setEditForm({ role: u.role, team_id: u.team_id ?? '' })
+    setEditForm({ role: u.role, team_id: u.team_id ?? '', player_id: u.player_id ?? '' })
   }
 
   const cancelEdit = () => {
@@ -76,25 +86,35 @@ export default function UsersPage() {
 
   const saveEdit = async () => {
     if (!editingId) return
+    setError(null)
     try {
       await updateUser(editingId, {
         role: editForm.role,
         team_id: editForm.team_id || null,
+        player_id: editForm.player_id || null,
       })
       await loadUsers()
       setEditingId(null)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Update failed'
+      const res = (err as { response?: { data?: { error?: string } } })?.response
+      const msg = res?.data?.error || (res?.status === 403 ? 'You do not have permission to update users.' : 'Update failed')
       setError(msg)
     }
   }
 
+  const playerLabel = (pid: string) => {
+    const pl = players.find((p: Player) => p.player_id === pid)
+    return pl ? `${pl.first_name} ${pl.last_name}` : pid
+  }
+
   const toggleActive = async (u: UserRow) => {
+    setError(null)
     try {
-      await updateUser(u.user_id, { is_active: u.is_active ? false : true })
+      await updateUser(u.user_id, { is_active: u.is_active ? 0 : 1 })
       await loadUsers()
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Update failed'
+      const res = (err as { response?: { data?: { error?: string } } })?.response
+      const msg = res?.data?.error || (res?.status === 403 ? 'You do not have permission to update users.' : 'Update failed')
       setError(msg)
     }
   }
@@ -127,6 +147,7 @@ export default function UsersPage() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Team</th>
+                  <th>Linked player</th>
                   <th>Status</th>
                   <th>Last login</th>
                   <th>Actions</th>
@@ -168,6 +189,23 @@ export default function UsersPage() {
                         </select>
                       ) : (
                         u.team_name ?? '—'
+                      )}
+                    </td>
+                    <td>
+                      {editingId === u.user_id ? (
+                        <select
+                          className="platform-input"
+                          value={editForm.player_id}
+                          onChange={(e) => setEditForm((f) => ({ ...f, player_id: e.target.value }))}
+                          style={{ width: 'auto', minWidth: '140px' }}
+                        >
+                          <option value="">None</option>
+                          {players.map((p) => (
+                            <option key={p.player_id} value={p.player_id}>{p.first_name} {p.last_name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        u.player_id ? playerLabel(u.player_id) : '—'
                       )}
                     </td>
                     <td>

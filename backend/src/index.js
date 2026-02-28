@@ -83,6 +83,7 @@ function initDb() {
         last_name TEXT,
         role TEXT NOT NULL,
         team_id TEXT REFERENCES teams(team_id) ON DELETE SET NULL,
+        player_id TEXT REFERENCES players(player_id) ON DELETE SET NULL,
         is_active INTEGER DEFAULT 1,
         last_login TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -135,6 +136,12 @@ function initDb() {
     
   `);
 
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN player_id TEXT REFERENCES players(player_id) ON DELETE SET NULL`);
+    console.log('Added users.player_id if missing');
+  } catch (e) {
+    if (!e.message || !e.message.includes('duplicate column')) console.error(e);
+  }
   console.log('Database schema initialized / updated');
 }
 

@@ -43,6 +43,8 @@ export const registerUser = (data: {
 }) => api.post('/auth/register', data)
 
 export const getTeams = () => api.get('/teams')
+export const createTeam = (data: { name: string; sport?: string; league?: string; country?: string; founded_year?: number }) =>
+  api.post('/teams', data)
 export const getPlayers = (teamId?: string) =>
   api.get('/players', { params: teamId ? { team_id: teamId } : undefined })
 export const getMetrics = () => api.get('/health-metrics');
@@ -52,7 +54,7 @@ export const getPlayerReadiness = (playerId: string) =>
   api.get(`/health-records/player/${playerId}/readiness`)
 
 export const getUsers = () => api.get('/users')
-export const updateUser = (userId: string, data: { role?: string; team_id?: string | null; is_active?: boolean }) =>
+export const updateUser = (userId: string, data: { role?: string; team_id?: string | null; player_id?: string | null; is_active?: boolean }) =>
   api.patch(`/users/${userId}`, data)
 
 export const login = (email: string, password: string) =>

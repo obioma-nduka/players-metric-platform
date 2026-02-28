@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/context/AuthContext'
+import { canManageUsers } from '@/utils/permissions'
 
 export default function Navbar() {
   const { token, user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const showUsers = canManageUsers(user?.role)
 
   const handleLogout = () => {
     logout()
@@ -20,7 +22,7 @@ export default function Navbar() {
           {token ? (
             <>
               <Link to="/dashboard">Dashboard</Link>
-              <Link to="/users">Users</Link>
+              {showUsers && <Link to="/users">Users</Link>}
               <span className="platform-nav-user">{user?.email ?? 'User'}</span>
               <button type="button" onClick={handleLogout} className="platform-btn platform-btn-danger">
                 Logout

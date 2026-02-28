@@ -65,6 +65,11 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
 
+  // Only admins can be created via other admins; self-registration cannot assign admin
+  // if (role === 'admin') {
+  //   return res.status(403).json({ error: 'Cannot self-register as admin' });
+  // }
+
   try {
     // Check if email already exists
     const existing = db.prepare('SELECT user_id FROM users WHERE email = ?').get(email.trim().toLowerCase());

@@ -1,24 +1,12 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { authenticateToken, loadUser } = require('../middleware/auth');
+const { requirePermission, requireOwnPlayerOrPermission } = require('../permissions');
 
 const router = express.Router();
 
-const jwt = require('jsonwebtoken');
-
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) return res.status(401).json({ error: 'No token provided' });
-
-  jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-me-please', (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-    req.user = user;
-    next();
-  });
-}
-
-router.post('/', authenticateToken, (req, res) => {
+// POST /health-records – add record (medical_staff, fitness_coach, admin)
+router.post('/', authenticateToken, loadUser, requirePermission('add_health_records'), (req, res) => {
   const db = req.app.locals.db;
   const { player_id, metric_type_id, recorded_at, value, notes, context } = req.body;
 
@@ -27,7 +15,6 @@ router.post('/', authenticateToken, (req, res) => {
   }
 
   const recordId = uuidv4();
-
   try {
     db.prepare(`
       INSERT INTO health_records (
@@ -51,7 +38,8 @@ router.post('/', authenticateToken, (req, res) => {
   }
 });
 
-router.get('/player/:playerId', authenticateToken, (req, res) => {
+// GET /health-records/player/:playerId – player can only access own
+router.get('/player/:playerId', authenticateToken, loadUser, requireOwnPlayerOrPermission('view_all_metrics'), (req, res) => {
   const db = req.app.locals.db;
   const { playerId } = req.params;
   const { limit = 50, metric_code } = req.query;
@@ -81,7 +69,8 @@ router.get('/player/:playerId', authenticateToken, (req, res) => {
   }
 });
 
-router.get('/player/:playerId/readiness', authenticateToken, (req, res) => {
+// GET /health-records/player/:playerId/readiness
+router.get('/player/:playerId/readiness', authenticateToken, loadUser, requireOwnPlayerOrPermission('view_all_metrics'), (req, res) => {
   const db = req.app.locals.db;
   const { playerId } = req.params;
 

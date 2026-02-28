@@ -1,10 +1,11 @@
 const express = require('express');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
+// GET /health-metrics – list metric types (authenticated users)
+router.get('/', authenticateToken, (req, res) => {
   const db = req.app.locals.db;
-
   try {
     const metrics = db.prepare(`
       SELECT metric_type_id, code, name, unit, data_type,

@@ -1,12 +1,13 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { authenticateToken, loadUser } = require('../middleware/auth');
+const { requirePermission } = require('../permissions');
 
 const router = express.Router();
 
-// GET /teams
-router.get('/', (req, res) => {
+// GET /teams – list teams (authenticated)
+router.get('/', authenticateToken, (req, res) => {
   const db = req.app.locals.db;
-
   try {
     const teams = db.prepare(`
       SELECT team_id, name, sport, league, country, founded_year, is_active
@@ -20,8 +21,8 @@ router.get('/', (req, res) => {
   }
 });
 
-// POST /teams
-router.post('/', (req, res) => {
+// POST /teams – create team (admin only)
+router.post('/', authenticateToken, loadUser, requirePermission('manage_teams'), (req, res) => {
   const db = req.app.locals.db;
   const { name, sport, league, country, founded_year } = req.body;
 
@@ -30,7 +31,6 @@ router.post('/', (req, res) => {
   }
 
   const teamId = uuidv4();
-
   try {
     db.prepare(`
       INSERT INTO teams (team_id, name, sport, league, country, founded_year)
@@ -39,7 +39,7 @@ router.post('/', (req, res) => {
 
     res.status(201).json({
       team_id: teamId,
-      name,
+      name: name.trim(),
       message: 'Team created'
     });
   } catch (err) {

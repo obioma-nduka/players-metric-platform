@@ -109,7 +109,8 @@ export default function RegisterPage() {
               <option value="coach">Coach</option>
               <option value="head_coach">Head Coach</option>
               <option value="performance_analyst">Performance Analyst</option>
-              <option value="admin">Admin</option>
+              <option value="admin">Admin (contact support)</option>
+              {/* Admin can only be assigned by existing admins via Users page */}
             </select>
           </div>
           <button type="submit" disabled={loading} className="platform-btn platform-btn-primary" style={{ width: '100%', padding: '0.5rem 1rem' }}>
