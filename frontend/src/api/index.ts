@@ -31,17 +31,31 @@ api.interceptors.response.use(
 
 
 export const loginUser = (email: string, password: string) =>
-  api.post('/auth/login', { email, password });
+  api.post('/auth/login', { email, password })
 
-export const getTeams = () => api.get('/teams');
+export const registerUser = (data: {
+  email: string
+  password: string
+  first_name: string
+  last_name: string
+  role: string
+  team_id?: string | null
+}) => api.post('/auth/register', data)
+
+export const getTeams = () => api.get('/teams')
 export const getPlayers = (teamId?: string) =>
-  api.get('/players', { params: teamId ? { team_id: teamId } : undefined });
+  api.get('/players', { params: teamId ? { team_id: teamId } : undefined })
 export const getMetrics = () => api.get('/health-metrics');
 export const getPlayerRecords = (playerId: string, limit = 50) =>
   api.get(`/health-records/player/${playerId}`, { params: { limit } });
 export const getPlayerReadiness = (playerId: string) =>
-  api.get(`/health-records/player/${playerId}/readiness`);
-export const login = (email: string, password: string) =>
-  api.post('/auth/login', { email, password });
+  api.get(`/health-records/player/${playerId}/readiness`)
 
-export default api;
+export const getUsers = () => api.get('/users')
+export const updateUser = (userId: string, data: { role?: string; team_id?: string | null; is_active?: boolean }) =>
+  api.patch(`/users/${userId}`, data)
+
+export const login = (email: string, password: string) =>
+  api.post('/auth/login', { email, password })
+
+export default api
