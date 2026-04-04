@@ -14,9 +14,9 @@ function authenticateToken(req, res, next) {
   }
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+      return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    req.user = decoded; // { userId, role, teamId }
+    req.user = decoded; // { userId, role, teamId, playerId? }
     next();
   });
 }
@@ -30,17 +30,20 @@ function loadUser(req, res, next) {
   if (!req.user?.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  const user = db.prepare(
-    'SELECT user_id, email, role, team_id, is_active FROM users WHERE user_id = ?'
-  ).get(req.user.userId);
+  let user;
+  try {
+    user = db.prepare(
+      'SELECT user_id, email, role, team_id, is_active, player_id FROM users WHERE user_id = ?'
+    ).get(req.user.userId);
+  } catch (_) {
+    user = db.prepare(
+      'SELECT user_id, email, role, team_id, is_active FROM users WHERE user_id = ?'
+    ).get(req.user.userId);
+  }
   if (!user || !user.is_active) {
     return res.status(403).json({ error: 'User not found or inactive' });
   }
-  let playerId = null;
-  try {
-    const row = db.prepare('SELECT player_id FROM users WHERE user_id = ?').get(req.user.userId);
-    if (row && row.player_id) playerId = row.player_id;
-  } catch (_) { /* column may not exist in old DBs */ }
+  const playerId = user.player_id || null;
   req.user = {
     userId: user.user_id,
     email: user.email,

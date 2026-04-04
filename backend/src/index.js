@@ -1,8 +1,10 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
-const { v4: uuidv4 } = require('uuid');
+const { uuidv4 } = require('./utils/id');
 
 
 const app = express();
@@ -16,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
   origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
@@ -24,6 +26,10 @@ app.use(cors({
 const db = new Database('./health.db', { verbose: console.log });
 db.pragma('foreign_keys = OFF');
 app.locals.db = db;
+
+const uploadDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+app.locals.uploadDir = uploadDir;
 
 
 const authRouter = require('./routes/auth')(db); 
@@ -137,8 +143,34 @@ function initDb() {
   `);
 
   try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS platform_settings (
+        setting_key TEXT PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    const seedSetting = db.prepare(
+      'INSERT OR IGNORE INTO platform_settings (setting_key, setting_value) VALUES (?, ?)'
+    );
+    seedSetting.run('organization_name', 'Player Metrics Club');
+    seedSetting.run('report_footer', 'Confidential — authorized staff only');
+  } catch (e) {
+    console.error('platform_settings init', e);
+  }
+
+  try {
     db.exec(`ALTER TABLE users ADD COLUMN player_id TEXT REFERENCES players(player_id) ON DELETE SET NULL`);
     console.log('Added users.player_id if missing');
+  } catch (e) {
+    if (!e.message || !e.message.includes('duplicate column')) console.error(e);
+  }
+
+  try {
+    db.exec(
+      `ALTER TABLE teams ADD COLUMN created_by_user_id TEXT REFERENCES users(user_id) ON DELETE SET NULL`
+    );
+    console.log('Added teams.created_by_user_id if missing');
   } catch (e) {
     if (!e.message || !e.message.includes('duplicate column')) console.error(e);
   }

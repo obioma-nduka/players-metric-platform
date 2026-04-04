@@ -99,6 +99,16 @@ export default function RegisterPage() {
             <label htmlFor="confirm_password" className="platform-label">Confirm password</label>
             <input id="confirm_password" name="confirm_password" type="password" autoComplete="new-password" required value={form.confirm_password} onChange={handleChange} className="platform-input" />
           </div>
+          {form.role === 'player' && (
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--platform-text-muted, #64748b)', lineHeight: 1.5 }}>
+              Players get a profile automatically. You cannot choose a team here — a head coach or coach will assign you after registration.
+            </p>
+          )}
+          {(form.role === 'coach' || form.role === 'head_coach') && (
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--platform-text-muted, #64748b)', lineHeight: 1.5 }}>
+              You are not assigned to a team at sign-up. After you log in, use the dashboard to create your team and manage your roster. Coaches may only create one active team; head coaches can create multiple.
+            </p>
+          )}
           <div>
             <label htmlFor="role" className="platform-label">Role</label>
             <select id="role" name="role" value={form.role} onChange={handleChange} required className="platform-input">
@@ -109,8 +119,7 @@ export default function RegisterPage() {
               <option value="coach">Coach</option>
               <option value="head_coach">Head Coach</option>
               <option value="performance_analyst">Performance Analyst</option>
-              <option value="admin">Admin (contact support)</option>
-              {/* Admin can only be assigned by existing admins via Users page */}
+              <option value="admin">Admin</option>
             </select>
           </div>
           <button type="submit" disabled={loading} className="platform-btn platform-btn-primary" style={{ width: '100%', padding: '0.5rem 1rem' }}>

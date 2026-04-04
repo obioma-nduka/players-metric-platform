@@ -18,7 +18,12 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email.trim(), password)
-      navigate('/dashboard')
+      const { user: u } = useAuthStore.getState()
+      if (u?.role === 'player' && u?.player_id) {
+        navigate('/my-metrics', { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
     } catch (err: unknown) {
       let errorMessage = 'Login failed. Please try again.'
       if (axios.isAxiosError(err)) {

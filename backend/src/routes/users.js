@@ -4,6 +4,23 @@ const { requirePermission } = require('../permissions');
 
 const router = express.Router();
 
+// GET /users/coach-candidates — coaches available to assign to a team (admin / head coach)
+router.get('/coach-candidates', authenticateToken, loadUser, requirePermission('assign_team_coaches'), (req, res) => {
+  const db = req.app.locals.db;
+  try {
+    const rows = db.prepare(`
+      SELECT u.user_id, u.email, u.first_name, u.last_name, u.team_id, t.name AS team_name
+      FROM users u
+      LEFT JOIN teams t ON u.team_id = t.team_id
+      WHERE u.is_active = 1 AND u.role = 'coach'
+      ORDER BY u.last_name ASC, u.first_name ASC
+    `).all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /users – list all users (admin only)
 router.get('/', authenticateToken, loadUser, requirePermission('manage_users'), (req, res) => {
   const db = req.app.locals.db;
@@ -59,6 +76,15 @@ router.patch('/:id', authenticateToken, loadUser, requirePermission('manage_user
 
     params.push(id);
     db.prepare(`UPDATE users SET updated_at = datetime('now'), ${updates.join(', ')} WHERE user_id = ?`).run(...params);
+
+    // Keep roster row in sync: team "View Players" lists `players`, not `users.team_id`.
+    const linked = db.prepare('SELECT team_id, player_id FROM users WHERE user_id = ?').get(id);
+    if (linked?.player_id) {
+      db.prepare(`UPDATE players SET team_id = ?, updated_at = datetime('now') WHERE player_id = ?`).run(
+        linked.team_id ?? null,
+        linked.player_id
+      );
+    }
 
     try {
       const user = db.prepare(`

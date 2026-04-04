@@ -24,6 +24,7 @@ interface Team {
 
 interface Player {
   player_id: string
+  team_id?: string | null
   first_name: string
   last_name: string
   team_name?: string
@@ -124,7 +125,10 @@ export default function UsersPage() {
   return (
     <div>
       <h1 className="platform-page-title">User Management</h1>
-      <p className="platform-page-subtitle">View and manage platform users, roles, and team assignments.</p>
+      <p className="platform-page-subtitle">
+        View and manage platform users, roles, and team assignments. Head coaches assign coaches to teams they created;
+        the user must already have the <strong>coach</strong> role before assignment.
+      </p>
 
       {error && (
         <div className="platform-card" style={{ marginBottom: '1rem', padding: '1rem', borderLeft: '4px solid var(--platform-danger)' }}>
@@ -201,7 +205,10 @@ export default function UsersPage() {
                         >
                           <option value="">None</option>
                           {players.map((p) => (
-                            <option key={p.player_id} value={p.player_id}>{p.first_name} {p.last_name}</option>
+                            <option key={p.player_id} value={p.player_id}>
+                              {p.first_name} {p.last_name}
+                              {p.team_name ? ` (${p.team_name})` : ''}
+                            </option>
                           ))}
                         </select>
                       ) : (

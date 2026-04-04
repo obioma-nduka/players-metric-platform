@@ -15,15 +15,21 @@ const ROLES = [
 
 /** Which roles have each permission (admin has all) */
 const PERMISSION_BY_ROLE = {
-  // Admin-only
-  manage_teams: ['admin'],
+  // Teams: admin all; head coach / coach create and edit teams they created (coach is linked to that team)
+  manage_teams: ['admin', 'head_coach', 'coach'],
   manage_users: ['admin'],
   manage_settings: ['admin'],
   manage_metric_types: ['admin'],
 
-  // Health records: add/edit (medical, fitness, admin)
-  add_health_records: ['admin', 'medical_staff', 'fitness_coach'],
-  edit_health_records: ['admin', 'medical_staff', 'fitness_coach'],
+  // Roster: add/remove players (team assignment) on allowed teams
+  manage_team_roster: ['admin', 'head_coach', 'coach'],
+
+  // Head coach (or admin) assigns coaches to a team the head coach created
+  assign_team_coaches: ['admin', 'head_coach'],
+
+  // Health records: medical, fitness, performance analyst + admin
+  add_health_records: ['admin', 'medical_staff', 'fitness_coach', 'performance_analyst'],
+  edit_health_records: ['admin', 'medical_staff', 'fitness_coach', 'performance_analyst'],
 
   // View all metrics / all players (not player role)
   view_all_players: ['admin', 'medical_staff', 'fitness_coach', 'coach', 'head_coach', 'performance_analyst'],
