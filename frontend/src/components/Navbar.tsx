@@ -3,9 +3,6 @@ import { Moon, Sun } from "lucide-react";
 import { useAuthStore } from "@/context/AuthContext";
 import { useThemeStore } from "@/context/ThemeContext";
 import {
-  canExportData,
-  canGenerateAnalyticalReports,
-  canGenerateMedicalReports,
   canManageMetricTypes,
   canManageSettings,
   canManageUsers,
@@ -42,11 +39,7 @@ export default function Navbar() {
     );
   }
 
-  if (
-    canExportData(user?.role) ||
-    canGenerateMedicalReports(user?.role) ||
-    canGenerateAnalyticalReports(user?.role)
-  ) {
+  if (token) {
     authenticatedLinks.push({ label: "Reports", to: "/reports" });
   }
 

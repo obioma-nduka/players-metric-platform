@@ -47,15 +47,9 @@ function PermissionRoute({ permission, children }) {
 }
 
 function ReportsRoute({ children }) {
-  const { token, user, hasHydrated } = useAuthStore();
+  const { token, hasHydrated } = useAuthStore();
   if (!hasHydrated) return null;
-  if (!token) return <Navigate to="/login" replace />;
-  const ok =
-    hasPermission(user?.role, "export_data") ||
-    hasPermission(user?.role, "generate_medical_reports") ||
-    hasPermission(user?.role, "generate_analytical_reports");
-  if (!ok) return <Navigate to="/dashboard" replace />;
-  return children;
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 function PlayersDirectoryRoute({ children }) {

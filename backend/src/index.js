@@ -1,49 +1,56 @@
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const express = require('express');
-const cors = require('cors');
-const Database = require('better-sqlite3');
-const { uuidv4 } = require('./utils/id');
-
+require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const express = require("express");
+const cors = require("cors");
+const Database = require("better-sqlite3");
+const { uuidv4 } = require("./utils/id");
 
 const app = express();
 
 const PORT = process.env.PORT || 5400;
 
-
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(cors({
-  origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  }),
+);
 
-const db = new Database('./health.db', { verbose: console.log });
-db.pragma('foreign_keys = OFF');
+const db = new Database("./health.db", { verbose: console.log });
+db.pragma("foreign_keys = OFF");
 app.locals.db = db;
 
-const uploadDir = path.join(__dirname, '..', 'uploads');
+const uploadDir = path.join(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 app.locals.uploadDir = uploadDir;
 
+const reportUploadDir = path.join(uploadDir, "report-files");
+if (!fs.existsSync(reportUploadDir))
+  fs.mkdirSync(reportUploadDir, { recursive: true });
+app.locals.reportUploadDir = reportUploadDir;
 
-const authRouter = require('./routes/auth')(db); 
-app.use('/api/auth', authRouter);
+const authRouter = require("./routes/auth")(db);
+app.use("/api/auth", authRouter);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', database: 'sqlite', time: new Date().toISOString() });
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    database: "sqlite",
+    time: new Date().toISOString(),
+  });
 });
 
 // Mount all API routes
-const apiRouter = require('./routes');
-app.use('/api', apiRouter);
-
+const apiRouter = require("./routes");
+app.use("/api", apiRouter);
 
 function initDb() {
   db.exec(`
@@ -77,7 +84,7 @@ function initDb() {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
-  
+
 
     -- 3. Users
     CREATE TABLE IF NOT EXISTS users (
@@ -95,7 +102,7 @@ function initDb() {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
- 
+
 
     -- 4. Health Metric Types
     CREATE TABLE IF NOT EXISTS health_metric_types (
@@ -125,7 +132,7 @@ function initDb() {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
-   
+
 
     -- 6. Attachments
     CREATE TABLE IF NOT EXISTS attachments (
@@ -139,7 +146,7 @@ function initDb() {
         uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
         description TEXT
     );
-    
+
   `);
 
   try {
@@ -151,69 +158,107 @@ function initDb() {
       )
     `);
     const seedSetting = db.prepare(
-      'INSERT OR IGNORE INTO platform_settings (setting_key, setting_value) VALUES (?, ?)'
+      "INSERT OR IGNORE INTO platform_settings (setting_key, setting_value) VALUES (?, ?)",
     );
-    seedSetting.run('organization_name', 'Player Metrics Club');
-    seedSetting.run('report_footer', 'Confidential — authorized staff only');
+    seedSetting.run("organization_name", "Player Metrics Club");
+    seedSetting.run("report_footer", "Confidential — authorized staff only");
   } catch (e) {
-    console.error('platform_settings init', e);
-  }
-
-  try {
-    db.exec(`ALTER TABLE users ADD COLUMN player_id TEXT REFERENCES players(player_id) ON DELETE SET NULL`);
-    console.log('Added users.player_id if missing');
-  } catch (e) {
-    if (!e.message || !e.message.includes('duplicate column')) console.error(e);
+    console.error("platform_settings init", e);
   }
 
   try {
     db.exec(
-      `ALTER TABLE teams ADD COLUMN created_by_user_id TEXT REFERENCES users(user_id) ON DELETE SET NULL`
+      `ALTER TABLE users ADD COLUMN player_id TEXT REFERENCES players(player_id) ON DELETE SET NULL`,
     );
-    console.log('Added teams.created_by_user_id if missing');
+    console.log("Added users.player_id if missing");
   } catch (e) {
-    if (!e.message || !e.message.includes('duplicate column')) console.error(e);
+    if (!e.message || !e.message.includes("duplicate column")) console.error(e);
   }
-  console.log('Database schema initialized / updated');
+
+  try {
+    db.exec(
+      `ALTER TABLE teams ADD COLUMN created_by_user_id TEXT REFERENCES users(user_id) ON DELETE SET NULL`,
+    );
+    console.log("Added teams.created_by_user_id if missing");
+  } catch (e) {
+    if (!e.message || !e.message.includes("duplicate column")) console.error(e);
+  }
+  console.log("Database schema initialized / updated");
 }
 
 const indexStatements = [
-    "CREATE INDEX IF NOT EXISTS idx_teams_name           ON teams(name)",
-    "CREATE INDEX IF NOT EXISTS idx_players_team_id      ON players(team_id)",
-    "CREATE INDEX IF NOT EXISTS idx_players_name         ON players(last_name, first_name)",
-    "CREATE INDEX IF NOT EXISTS idx_players_jersey       ON players(jersey_number)",
-    "CREATE INDEX IF NOT EXISTS idx_users_email          ON users(email)",
-    "CREATE INDEX IF NOT EXISTS idx_users_team_id        ON users(team_id)",
-    "CREATE INDEX IF NOT EXISTS idx_metric_code          ON health_metric_types(code)",
-    "CREATE INDEX IF NOT EXISTS idx_records_player       ON health_records(player_id)",
-    "CREATE INDEX IF NOT EXISTS idx_records_metric       ON health_records(metric_type_id)",
-    "CREATE INDEX IF NOT EXISTS idx_records_time         ON health_records(recorded_at)",
-    "CREATE INDEX IF NOT EXISTS idx_records_player_time  ON health_records(player_id, recorded_at DESC)",
-    "CREATE INDEX IF NOT EXISTS idx_attachments_record   ON attachments(record_id)",
-  ];
+  "CREATE INDEX IF NOT EXISTS idx_teams_name           ON teams(name)",
+  "CREATE INDEX IF NOT EXISTS idx_players_team_id      ON players(team_id)",
+  "CREATE INDEX IF NOT EXISTS idx_players_name         ON players(last_name, first_name)",
+  "CREATE INDEX IF NOT EXISTS idx_players_jersey       ON players(jersey_number)",
+  "CREATE INDEX IF NOT EXISTS idx_users_email          ON users(email)",
+  "CREATE INDEX IF NOT EXISTS idx_users_team_id        ON users(team_id)",
+  "CREATE INDEX IF NOT EXISTS idx_metric_code          ON health_metric_types(code)",
+  "CREATE INDEX IF NOT EXISTS idx_records_player       ON health_records(player_id)",
+  "CREATE INDEX IF NOT EXISTS idx_records_metric       ON health_records(metric_type_id)",
+  "CREATE INDEX IF NOT EXISTS idx_records_time         ON health_records(recorded_at)",
+  "CREATE INDEX IF NOT EXISTS idx_records_player_time  ON health_records(player_id, recorded_at DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_attachments_record   ON attachments(record_id)",
+];
 
-  for (const stmt of indexStatements) {
-    try {
-      db.exec(stmt.replace("IF NOT EXISTS", "")); 
-    } catch (err) {
-      if (err.code !== 'SQLITE_ERROR' || !err.message.includes('already exists')) {
-        console.error(`Failed to create index: ${stmt}`, err);
-      }
-      
+for (const stmt of indexStatements) {
+  try {
+    db.exec(stmt.replace("IF NOT EXISTS", ""));
+  } catch (err) {
+    if (
+      err.code !== "SQLITE_ERROR" ||
+      !err.message.includes("already exists")
+    ) {
+      console.error(`Failed to create index: ${stmt}`, err);
     }
   }
+}
 
-  console.log('Database schema and indexes initialized / verified');
+console.log("Database schema and indexes initialized / verified");
 
 function seedDefaultMetrics() {
   const defaults = [
-    { code: 'hrv_rmssd',    name: 'HRV RMSSD',           unit: 'ms',   data_type: 'numeric', normal_range_low: 20, normal_range_high: 100, description: 'Root Mean Square of Successive Differences' },
-    { code: 'hrv_sdnn',      name: 'HRV SDNN',            unit: 'ms',   data_type: 'numeric' },
-    { code: 'resting_hr',    name: 'Resting Heart Rate',  unit: 'bpm',  data_type: 'numeric', min_value: 30, max_value: 120 },
-    { code: 'eda_tonic',     name: 'EDA Tonic Level',     unit: 'μS',   data_type: 'numeric' },
-    { code: 'fatigue',       name: 'Perceived Fatigue',   unit: '1-10', data_type: 'integer', min_value: 1, max_value: 10 },
-    { code: 'sleep_quality', name: 'Sleep Quality',       unit: '1-10', data_type: 'integer', min_value: 1, max_value: 10 },
-    { code: 'mood',          name: 'Mood State',          unit: null,   data_type: 'text' },
+    {
+      code: "hrv_rmssd",
+      name: "HRV RMSSD",
+      unit: "ms",
+      data_type: "numeric",
+      normal_range_low: 20,
+      normal_range_high: 100,
+      description: "Root Mean Square of Successive Differences",
+    },
+    { code: "hrv_sdnn", name: "HRV SDNN", unit: "ms", data_type: "numeric" },
+    {
+      code: "resting_hr",
+      name: "Resting Heart Rate",
+      unit: "bpm",
+      data_type: "numeric",
+      min_value: 30,
+      max_value: 120,
+    },
+    {
+      code: "eda_tonic",
+      name: "EDA Tonic Level",
+      unit: "μS",
+      data_type: "numeric",
+    },
+    {
+      code: "fatigue",
+      name: "Perceived Fatigue",
+      unit: "1-10",
+      data_type: "integer",
+      min_value: 1,
+      max_value: 10,
+    },
+    {
+      code: "sleep_quality",
+      name: "Sleep Quality",
+      unit: "1-10",
+      data_type: "integer",
+      min_value: 1,
+      max_value: 10,
+    },
+    { code: "mood", name: "Mood State", unit: null, data_type: "text" },
   ];
 
   const insert = db.prepare(`
@@ -222,7 +267,16 @@ function seedDefaultMetrics() {
   `);
 
   for (const m of defaults) {
-    insert.run(uuidv4(), m.code, m.name, m.unit || null, m.data_type, m.normal_range_low || null, m.normal_range_high || null, m.description || null);
+    insert.run(
+      uuidv4(),
+      m.code,
+      m.name,
+      m.unit || null,
+      m.data_type,
+      m.normal_range_low || null,
+      m.normal_range_high || null,
+      m.description || null,
+    );
   }
 
   console.log(`Seeded ${defaults.length} default metric types`);

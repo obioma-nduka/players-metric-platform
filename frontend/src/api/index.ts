@@ -1,15 +1,15 @@
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: 'http://localhost:5400/api',
+  baseURL: "http://localhost:5400/api",
   timeout: 60000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -20,19 +20,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem("token");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export const loginUser = (email: string, password: string) =>
-  api.post('/auth/login', { email, password });
+  api.post("/auth/login", { email, password });
 
 export const login = loginUser;
 
-export const getMe = () => api.get('/auth/me');
+export const getMe = () => api.get("/auth/me");
 
 export const registerUser = (data: {
   email: string;
@@ -41,16 +41,16 @@ export const registerUser = (data: {
   last_name: string;
   role: string;
   team_id?: string | null;
-}) => api.post('/auth/register', data);
+}) => api.post("/auth/register", data);
 
-export const getTeams = () => api.get('/teams');
+export const getTeams = () => api.get("/teams");
 export const createTeam = (data: {
   name: string;
   sport?: string;
   league?: string;
   country?: string;
   founded_year?: number;
-}) => api.post('/teams', data);
+}) => api.post("/teams", data);
 export const updateTeam = (
   teamId: string,
   data: {
@@ -60,16 +60,18 @@ export const updateTeam = (
     country?: string;
     founded_year?: number;
     is_active?: boolean | number;
-  }
+  },
 ) => api.patch(`/teams/${teamId}`, data);
 
 export const getPlayers = (teamId?: string) =>
-  api.get('/players', { params: teamId ? { team_id: teamId } : undefined });
+  api.get("/players", { params: teamId ? { team_id: teamId } : undefined });
 export const getPlayer = (playerId: string) => api.get(`/players/${playerId}`);
-export const getMyPlayerProfile = () => api.get('/players/me/profile');
-export const patchMyPlayerProfile = (data: Record<string, unknown>) => api.patch('/players/me/profile', data);
-export const getCoachCandidates = () => api.get('/users/coach-candidates');
-export const getTeamCoaches = (teamId: string) => api.get(`/teams/${teamId}/coaches`);
+export const getMyPlayerProfile = () => api.get("/players/me/profile");
+export const patchMyPlayerProfile = (data: Record<string, unknown>) =>
+  api.patch("/players/me/profile", data);
+export const getCoachCandidates = () => api.get("/users/coach-candidates");
+export const getTeamCoaches = (teamId: string) =>
+  api.get(`/teams/${teamId}/coaches`);
 export const assignCoachToTeam = (teamId: string, userId: string) =>
   api.post(`/teams/${teamId}/assign-coach`, { user_id: userId });
 export const createPlayer = (data: {
@@ -83,7 +85,7 @@ export const createPlayer = (data: {
   nationality?: string;
   height_cm?: number;
   weight_kg?: number;
-}) => api.post('/players', data);
+}) => api.post("/players", data);
 export const updatePlayer = (
   playerId: string,
   data: {
@@ -98,12 +100,13 @@ export const updatePlayer = (
     height_cm?: number;
     weight_kg?: number;
     is_active?: boolean | number;
-  }
+  },
 ) => api.patch(`/players/${playerId}`, data);
 
-export const getMetrics = () => api.get('/health-metrics');
-export const getMetricsAll = () => api.get('/health-metrics/all');
-export const createMetricType = (data: Record<string, unknown>) => api.post('/health-metrics', data);
+export const getMetrics = () => api.get("/health-metrics");
+export const getMetricsAll = () => api.get("/health-metrics/all");
+export const createMetricType = (data: Record<string, unknown>) =>
+  api.post("/health-metrics", data);
 export const updateMetricType = (id: string, data: Record<string, unknown>) =>
   api.patch(`/health-metrics/${id}`, data);
 
@@ -118,49 +121,105 @@ export const createHealthRecord = (data: {
   value: string | number | boolean;
   notes?: string;
   context?: Record<string, unknown>;
-}) => api.post('/health-records', data);
+}) => api.post("/health-records", data);
 export const updateHealthRecord = (
   recordId: string,
-  data: { recorded_at?: string; value?: string | number | boolean; notes?: string; context?: Record<string, unknown> }
+  data: {
+    recorded_at?: string;
+    value?: string | number | boolean;
+    notes?: string;
+    context?: Record<string, unknown>;
+  },
 ) => api.patch(`/health-records/${recordId}`, data);
-export const deleteHealthRecord = (recordId: string) => api.delete(`/health-records/${recordId}`);
-export const listRecordAttachments = (recordId: string) => api.get(`/health-records/${recordId}/attachments`);
+export const deleteHealthRecord = (recordId: string) =>
+  api.delete(`/health-records/${recordId}`);
+export const listRecordAttachments = (recordId: string) =>
+  api.get(`/health-records/${recordId}/attachments`);
 export const uploadRecordAttachment = (recordId: string, file: File) => {
   const fd = new FormData();
-  fd.append('file', file);
+  fd.append("file", file);
   return api.post(`/health-records/${recordId}/attachments`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { "Content-Type": "multipart/form-data" },
   });
 };
-
-export const getUsers = () => api.get('/users');
-export const updateUser = (
-  userId: string,
-  data: { role?: string; team_id?: string | null; player_id?: string | null; is_active?: boolean | number }
-) => api.patch(`/users/${userId}`, data);
-
-export const exportData = (params: { resource?: string; format?: string; team_id?: string }) =>
-  api.get('/export', {
-    params,
-    responseType: params.format === 'csv' ? 'blob' : 'json',
+export const getAttachmentFileBlob = (attachmentId: string) =>
+  api.get(`/attachments/${attachmentId}/file`, {
+    responseType: "blob",
   });
 
-export async function downloadAttachmentFile(attachmentId: string, fileName: string) {
-  const res = await api.get(`/attachments/${attachmentId}/file`, { responseType: 'blob' });
+export const getUsers = () => api.get("/users");
+export const updateUser = (
+  userId: string,
+  data: {
+    role?: string;
+    team_id?: string | null;
+    player_id?: string | null;
+    is_active?: boolean | number;
+  },
+) => api.patch(`/users/${userId}`, data);
+
+export const exportData = (params: {
+  resource?: string;
+  format?: string;
+  team_id?: string;
+}) =>
+  api.get("/export", {
+    params,
+    responseType: params.format === "csv" ? "blob" : "json",
+  });
+
+export async function downloadAttachmentFile(
+  attachmentId: string,
+  fileName: string,
+) {
+  const res = await getAttachmentFileBlob(attachmentId);
   const url = window.URL.createObjectURL(res.data);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = fileName || 'download';
+  a.download = fileName || "download";
   a.click();
   window.URL.revokeObjectURL(url);
 }
 
-export const getMedicalReport = (params: { player_id?: string; team_id?: string }) =>
-  api.get('/reports/medical', { params });
+export const getMedicalReport = (params: {
+  player_id?: string;
+  team_id?: string;
+}) => api.get("/reports/medical", { params });
 export const getAnalyticalReport = (params: { team_id?: string }) =>
-  api.get('/reports/analytical', { params });
+  api.get("/reports/analytical", { params });
 
-export const getSettings = () => api.get('/settings');
-export const patchSettings = (data: Record<string, string>) => api.patch('/settings', data);
+export type ReportFile = {
+  id: string;
+  name: string;
+  mime_type: string | null;
+  size_bytes: number;
+  updated_at: string;
+  source: "report-files" | "legacy-uploads";
+};
+
+export const listReportFiles = () => api.get<ReportFile[]>("/reports/files");
+export const previewReportFile = (fileId: string) =>
+  api.get(`/reports/files/${encodeURIComponent(fileId)}/view`, {
+    responseType: "blob",
+  });
+
+export async function downloadReportFile(fileId: string, fileName: string) {
+  const res = await api.get(
+    `/reports/files/${encodeURIComponent(fileId)}/download`,
+    {
+      responseType: "blob",
+    },
+  );
+  const url = window.URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName || "report-file";
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+export const getSettings = () => api.get("/settings");
+export const patchSettings = (data: Record<string, string>) =>
+  api.patch("/settings", data);
 
 export default api;
