@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { login, getMe } from '@/api';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { login, getMe } from "@/api";
 
 export type AuthUser = {
   id: string;
@@ -14,6 +14,8 @@ type AuthState = {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  hasHydrated: boolean;
+  setHasHydrated: (value: boolean) => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setUser: (user: AuthUser | null) => void;
@@ -26,11 +28,14 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      hasHydrated: false,
+
+      setHasHydrated: (value) => set({ hasHydrated: value }),
 
       login: async (email, password) => {
         const { data } = await login(email, password);
         const { token, user } = data;
-        localStorage.setItem('token', token);
+        localStorage.setItem("token", token);
         const u = user as AuthUser;
         set({
           token,
@@ -46,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        localStorage.removeItem('token');
+        localStorage.removeItem("token");
         set({ token: null, user: null, isAuthenticated: false });
       },
 
@@ -78,6 +83,11 @@ export const useAuthStore = create<AuthState>()(
         }
       },
     }),
-    { name: 'auth-storage' }
-  )
+    {
+      name: "auth-storage",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    },
+  ),
 );

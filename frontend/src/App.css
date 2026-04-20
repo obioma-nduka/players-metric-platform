@@ -1,14 +1,14 @@
-/* App-specific overrides – platform styles live in index.css */
+/* App-specific overrides – shared platform styles live in index.css */
 
 #root {
-  width: 100%;
+    width: 100%;
 }
 
 /* Auth pages (login/register) – center content in main */
 .platform-main .auth-center {
-  max-width: 28rem;
-  margin-left: auto;
-  margin-right: auto;
-  padding-top: 2rem;
-  padding-bottom: 2rem;
+    max-width: 28rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
 }
