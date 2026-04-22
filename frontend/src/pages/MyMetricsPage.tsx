@@ -7,6 +7,11 @@ import { isPlayerRole } from '@/utils/permissions'
 export default function MyMetricsPage() {
   const { token, user, refreshMe } = useAuthStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = 'My Metrics | Players Metrics Platform'
+  }, [])
+
   const [readiness, setReadiness] = useState<Record<string, unknown> | null>(null)
   const [records, setRecords] = useState<Array<Record<string, unknown>>>([])
   const [error, setError] = useState<string | null>(null)

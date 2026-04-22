@@ -56,6 +56,10 @@ function isTextMime(mime?: string | null) {
 export default function ReportsPage() {
   const { token, user } = useAuthStore();
 
+  useEffect(() => {
+    document.title = "Reports | Players Metrics Platform";
+  }, []);
+
   const [medical, setMedical] = useState<unknown>(null);
   const [analytical, setAnalytical] = useState<unknown>(null);
   const [teams, setTeams] = useState<TeamOption[]>([]);

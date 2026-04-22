@@ -29,6 +29,10 @@ export default function TeamPlayersPage() {
   const [creating, setCreating] = useState(false)
   const [newPl, setNewPl] = useState({ first_name: '', last_name: '', position: '', jersey_number: '' })
 
+  useEffect(() => {
+    document.title = `${teamName || "Team"} Roster | Players Metrics Platform`;
+  }, [teamName]);
+
   const refetch = async () => {
     if (!teamId) return
     const res = await getPlayers(teamId)

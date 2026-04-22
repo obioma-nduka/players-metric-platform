@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState, FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { useAuthStore } from "@/context/AuthContext";
 import {
   getPlayer,
@@ -66,6 +76,14 @@ type ExcelPreview = {
   sheets: ExcelPreviewSheet[];
 };
 
+type JsonSignalData = {
+  session?: string;
+  created_at?: string;
+  signals?: {
+    [key: string]: any;
+  };
+};
+
 function formatFileSize(bytes?: number | null) {
   if (!bytes || bytes <= 0) return "—";
   const units = ["B", "KB", "MB", "GB"];
@@ -86,14 +104,19 @@ function isImageFile(mime?: string | null) {
   return !!mime && mime.startsWith("image/");
 }
 
+function isJsonFile(mime?: string | null, fileName?: string) {
+  return (
+    mime === "application/json" || !!fileName?.toLowerCase().endsWith(".json")
+  );
+}
+
 function isTextFile(mime?: string | null, fileName?: string) {
   return (
     (!!mime &&
       (mime.startsWith("text/") ||
-        mime.includes("json") ||
         mime.includes("xml") ||
         mime.includes("csv"))) ||
-    !!fileName?.match(/\.(txt|csv|json|xml|log)$/i)
+    !!fileName?.match(/\.(txt|csv|xml|log)$/i)
   );
 }
 
@@ -107,6 +130,298 @@ function isExcelFile(mime?: string | null, fileName?: string) {
     lower.endsWith(".xlsx") ||
     lower.endsWith(".xlsm") ||
     lower.endsWith(".csv")
+  );
+}
+
+function JsonVisualization({ data }: { data: JsonSignalData }) {
+  const signalDefinitions: Record<
+    string,
+    { label: string; unit: string; meaning: string }
+  > = {
+    ACC: {
+      label: "ACC – Motion",
+      unit: "g",
+      meaning: "Detects if you are moving, walking, or staying still.",
+    },
+    GYR: {
+      label: "GYR – Rotation",
+      unit: "deg/s",
+      meaning: "Detects if you are turning or tilting your wrist.",
+    },
+    MAG: {
+      label: "MAG – Magnetic",
+      unit: "μT",
+      meaning: "Detects the magnetic field around you, like a compass.",
+    },
+    EA: {
+      label: "EA – or (EDA) Skin Sweat",
+      unit: "μS",
+      meaning:
+        "Measures how much your skin sweats. More sweat = more stress or excitement.",
+    },
+    PI: {
+      label: "PI – Infrared Light",
+      unit: "unit",
+      meaning: "Shines invisible light into your skin to detect your pulse.",
+    },
+    PR: {
+      label: "PR – Red Light",
+      unit: "unit",
+      meaning:
+        "Same as PI but uses red light. Together they can estimate blood oxygen.",
+    },
+    PG: {
+      label: "PG – Green Light",
+      unit: "unit",
+      meaning:
+        "Uses green light to detect your heartbeat. Most accurate on the wrist.",
+    },
+    T1: {
+      label: "T1 – Skin Temperature",
+      unit: "°C",
+      meaning: "Measures how warm your skin feels by touching it.",
+    },
+    TH: {
+      label: "TH – Air Temperature",
+      unit: "°C",
+      meaning: "Measures your skin's heat without touching it.",
+    },
+    HR: {
+      label: "HR – Heart Rate",
+      unit: "bpm",
+      meaning: "How many times your heart beats per minute.",
+    },
+    BI: {
+      label: "BI – Time Between Beats",
+      unit: "ms",
+      meaning:
+        "The gap between each heartbeat in milliseconds. Used to measure stress and relaxation balance.",
+    },
+    SF: {
+      label: "SF – Sweat Spike Count",
+      unit: "counts/min",
+      meaning:
+        "Counts how many times your sweat suddenly jumps. More jumps = more stress reactions.",
+    },
+  };
+
+  const tabs = useMemo(() => {
+    if (!data.signals) return [];
+    const excluded = ["BV", "B%"];
+    return Object.keys(data.signals)
+      .filter((key) => !excluded.includes(key))
+      .map((key) => {
+        const def = signalDefinitions[key];
+        return {
+          label: def?.label || key,
+          key,
+          unit: def?.unit || "unit",
+          meaning: def?.meaning || "",
+        };
+      });
+  }, [data.signals]);
+
+  const [activeTabKey, setActiveTabKey] = useState<string>(
+    tabs[0]?.key || "BPM",
+  );
+
+  const activeTabInfo = useMemo(
+    () => tabs.find((t) => t.key === activeTabKey) || tabs[0],
+    [tabs, activeTabKey],
+  );
+
+  const formatJsonDate = (dateStr?: string) => {
+    if (!dateStr) return "Unknown";
+    try {
+      const parts = dateStr.split("_");
+      if (parts.length < 2) return dateStr;
+      const datePart = parts[0];
+      const timePart = parts[1].split("-").slice(0, 3).join(":");
+      const d = new Date(`${datePart}T${timePart}`);
+      return d.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const chartData = useMemo(() => {
+    if (!activeTabKey || !data.signals) return [];
+
+    const signal = data.signals[activeTabKey];
+    if (!signal) return [];
+
+    // Handle multi-axis signals (ACC, GYR, MAG)
+    if (signal.X && Array.isArray(signal.X)) {
+      const x = signal.X;
+      const y = signal.Y || [];
+      const z = signal.Z || [];
+
+      return x.map((point: [number, number], i: number) => {
+        const time = point[0];
+        const vx = point[1];
+        const vy = y[i] ? y[i][1] : 0;
+        const vz = z[i] ? z[i][1] : 0;
+        const magnitude = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        return { time, value: parseFloat(magnitude.toFixed(3)) };
+      });
+    }
+
+    // Standard [[time, val], ...] format
+    if (Array.isArray(signal)) {
+      return signal.map((point: [number, number]) => ({
+        time: point[0],
+        value: point[1],
+      }));
+    }
+
+    return [];
+  }, [activeTabKey, data]);
+
+  return (
+    <div style={{ display: "grid", gap: "1rem" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+        {tabs.map((tab) => {
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              className="platform-btn"
+              style={{
+                fontSize: "0.9rem",
+                padding: "0.5rem 1rem",
+                borderRadius: "10px",
+                background: activeTabKey === tab.key ? "#fff" : "#f3f4f6",
+                border: "1px solid",
+                borderColor:
+                  activeTabKey === tab.key
+                    ? "var(--platform-border)"
+                    : "transparent",
+                color: "var(--platform-text)",
+                fontWeight: 500,
+                transition: "all 0.2s",
+              }}
+              onClick={() => setActiveTabKey(tab.key)}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        style={{
+          fontSize: "0.875rem",
+          color: "#475569",
+          display: "flex",
+          alignItems: "center",
+          gap: "1.5rem",
+          paddingLeft: "0.25rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span
+            style={{
+              width: "12px",
+              height: "12px",
+              background: "#3b82f6",
+              borderRadius: "2px",
+            }}
+          ></span>
+          Session {data.session || "1"} ({formatJsonDate(data.created_at)})
+        </div>
+      </div>
+
+      {activeTabInfo?.meaning && (
+        <div
+          style={{
+            fontSize: "0.85rem",
+            color: "#475569",
+            lineHeight: "1.4",
+            padding: "0.75rem 1rem",
+            background: "#f8fafc",
+            borderRadius: "8px",
+            border: "1px solid #e2e8f0",
+            marginTop: "0.5rem",
+          }}
+        >
+          <strong>{activeTabInfo.label}</strong> — {activeTabInfo.meaning}
+        </div>
+      )}
+
+      <div
+        style={{
+          height: "350px",
+          width: "100%",
+          marginTop: "0.5rem",
+          background: "#fff",
+          padding: "1rem 0.5rem 0.5rem 0",
+          borderRadius: "8px",
+        }}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chartData}
+            margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+          >
+            <CartesianGrid stroke="#e2e8f0" vertical={false} />
+            <XAxis
+              dataKey="time"
+              type="number"
+              domain={["auto", "auto"]}
+              axisLine={true}
+              tickLine={true}
+              tick={{ fontSize: 11, fill: "#64748b" }}
+              label={{
+                value: "time (s)",
+                position: "bottom",
+                offset: 0,
+                fontSize: 11,
+                fill: "#64748b",
+              }}
+            />
+            <YAxis
+              axisLine={true}
+              tickLine={true}
+              tick={{ fontSize: 11, fill: "#64748b" }}
+              label={{
+                value: activeTabInfo?.unit,
+                angle: -90,
+                position: "insideLeft",
+                fontSize: 11,
+                fill: "#64748b",
+                offset: 10,
+              }}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: "8px",
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+              }}
+              labelFormatter={(label) => `Time: ${label}s`}
+              formatter={(value: number) => [
+                `${value} ${activeTabInfo?.unit}`,
+                activeTabInfo?.label,
+              ]}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#3b82f6"
+              dot={false}
+              strokeWidth={1.5}
+              animationDuration={400}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
 
@@ -128,6 +443,13 @@ export default function PlayerDetailPage() {
   >({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const name = profile
+      ? `${profile.first_name} ${profile.last_name}`
+      : "Player Detail";
+    document.title = `${name} | Players Metrics Platform`;
+  }, [profile]);
 
   const [editProfile, setEditProfile] = useState({
     first_name: "",
@@ -165,6 +487,7 @@ export default function PlayerDetailPage() {
   >(null);
   const [textPreview, setTextPreview] = useState<string | null>(null);
   const [excelPreview, setExcelPreview] = useState<ExcelPreview | null>(null);
+  const [jsonPreview, setJsonPreview] = useState<JsonSignalData | null>(null);
   const [activeExcelSheetName, setActiveExcelSheetName] = useState<string>("");
 
   const load = async () => {
@@ -290,6 +613,7 @@ export default function PlayerDetailPage() {
       setAttachmentPreviewError(null);
       setTextPreview(null);
       setExcelPreview(null);
+      setJsonPreview(null);
       setActiveExcelSheetName("");
       setAttachmentPreviewUrl((current) => {
         if (current) window.URL.revokeObjectURL(current);
@@ -307,6 +631,7 @@ export default function PlayerDetailPage() {
       setAttachmentPreviewError(null);
       setTextPreview(null);
       setExcelPreview(null);
+      setJsonPreview(null);
 
       try {
         const res = await getAttachmentFileBlob(
@@ -339,6 +664,19 @@ export default function PlayerDetailPage() {
             sheets,
           });
           setActiveExcelSheetName(sheetNames[0] || "");
+        } else if (isJsonFile(mime, selectedAttachment.file_name)) {
+          const text = await blob.text();
+          if (cancelled) return;
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed && parsed.signals) {
+              setJsonPreview(parsed);
+            } else {
+              setTextPreview(text.slice(0, 15000));
+            }
+          } catch {
+            setTextPreview(text.slice(0, 15000));
+          }
         } else if (isTextFile(mime, selectedAttachment.file_name)) {
           const text = await blob.text();
           if (cancelled) return;
@@ -618,6 +956,10 @@ export default function PlayerDetailPage() {
           </div>
         </div>
       );
+    }
+
+    if (jsonPreview) {
+      return <JsonVisualization data={jsonPreview} />;
     }
 
     if (textPreview != null) {

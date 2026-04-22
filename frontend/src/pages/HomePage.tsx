@@ -10,6 +10,7 @@ import {
 import { Link, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/context/AuthContext";
 import { useThemeStore } from "@/context/ThemeContext";
+import { useEffect } from "react";
 
 const features = [
   {
@@ -65,6 +66,10 @@ const roles = [
 export default function HomePage() {
   const token = useAuthStore((state) => state.token);
   const theme = useThemeStore((state) => state.theme);
+
+  useEffect(() => {
+    document.title = "Players Metrics Platform";
+  }, []);
 
   if (token) {
     return <Navigate to="/dashboard" replace />;

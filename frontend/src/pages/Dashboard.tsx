@@ -136,8 +136,13 @@ function RoleGettingStarted({ role }: { role?: string }) {
 }
 
 export default function Dashboard() {
-  const { user, token, refreshMe } = useAuthStore();
+  const { token, user } = useAuthStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "Dashboard | Players Metrics Platform";
+  }, []);
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [error, setError] = useState<string | null>(null);

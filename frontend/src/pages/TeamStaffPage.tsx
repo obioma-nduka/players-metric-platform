@@ -18,6 +18,10 @@ export default function TeamStaffPage() {
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(false)
 
+  useEffect(() => {
+    document.title = `Assign Coaches: ${teamName || "Team"} | Players Metrics Platform`;
+  }, [teamName]);
+
   const load = async () => {
     if (!teamId) return
     setLoading(true)

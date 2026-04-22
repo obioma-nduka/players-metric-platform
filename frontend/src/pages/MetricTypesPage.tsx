@@ -19,6 +19,11 @@ type Metric = {
 
 export default function MetricTypesPage() {
   const { token } = useAuthStore()
+
+  useEffect(() => {
+    document.title = 'Metric Types | Players Metrics Platform'
+  }, [])
+
   const [rows, setRows] = useState<Metric[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

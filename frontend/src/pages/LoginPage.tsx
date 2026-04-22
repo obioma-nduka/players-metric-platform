@@ -13,6 +13,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    document.title = "Login | Players Metrics Platform";
+  }, []);
+
+  useEffect(() => {
     if (token) {
       navigate("/dashboard", { replace: true });
     }

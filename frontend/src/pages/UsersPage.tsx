@@ -32,6 +32,11 @@ interface Player {
 
 export default function UsersPage() {
   const { token } = useAuthStore()
+
+  useEffect(() => {
+    document.title = 'Users Management | Players Metrics Platform'
+  }, [])
+
   const [users, setUsers] = useState<UserRow[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)

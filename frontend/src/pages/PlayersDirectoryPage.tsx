@@ -15,6 +15,11 @@ type PlayerRow = {
 export default function PlayersDirectoryPage() {
   const { token } = useAuthStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = 'Players Directory | Players Metrics Platform'
+  }, [])
+
   const [teams, setTeams] = useState<Team[]>([])
   const [filterTeam, setFilterTeam] = useState('')
   const [players, setPlayers] = useState<PlayerRow[]>([])

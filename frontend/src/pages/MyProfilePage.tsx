@@ -7,6 +7,11 @@ import { isPlayerRole } from '@/utils/permissions'
 export default function MyProfilePage() {
   const { token, user } = useAuthStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = 'My Profile | Players Metrics Platform'
+  }, [])
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)

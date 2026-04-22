@@ -5,6 +5,11 @@ import { getSettings, patchSettings } from '@/api'
 
 export default function SettingsPage() {
   const { token } = useAuthStore()
+
+  useEffect(() => {
+    document.title = 'Settings | Players Metrics Platform'
+  }, [])
+
   const [map, setMap] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
