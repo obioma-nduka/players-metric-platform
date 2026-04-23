@@ -65,8 +65,8 @@
     --platform-table-header-bg: rgba(219, 234, 254, 0.52);
     --platform-table-row-hover: rgba(219, 234, 254, 0.32);
     --platform-card-header-bg: rgba(219, 234, 254, 0.58);
-    --platform-shadow: 0 18px 40px rgba(2, 8, 23, 0.18);
-    --platform-shadow-lg: 0 28px 60px rgba(2, 8, 23, 0.28);
+    --platform-shadow: 0 4px 12px rgba(2, 8, 23, 0.08);
+    --platform-shadow-lg: 0 8px 20px rgba(2, 8, 23, 0.12);
     --platform-radius: 20px;
     --platform-radius-sm: 14px;
     --platform-radius-pill: 999px;
@@ -138,8 +138,8 @@
     --platform-table-header-bg: rgba(219, 234, 254, 0.72);
     --platform-table-row-hover: rgba(219, 234, 254, 0.42);
     --platform-card-header-bg: rgba(219, 234, 254, 0.76);
-    --platform-shadow: 0 16px 36px rgba(30, 41, 59, 0.1);
-    --platform-shadow-lg: 0 24px 48px rgba(30, 41, 59, 0.14);
+    --platform-shadow: 0 4px 8px rgba(30, 41, 59, 0.05);
+    --platform-shadow-lg: 0 8px 16px rgba(30, 41, 59, 0.08);
 }
 
 * {
@@ -260,7 +260,7 @@ button {
     color: var(--platform-nav-text);
     border-bottom: 1px solid var(--platform-nav-border);
     backdrop-filter: blur(16px);
-    box-shadow: 0 10px 30px rgba(2, 8, 23, 0.18);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition:
         background 0.25s ease,
         border-color 0.25s ease,
@@ -299,7 +299,6 @@ button {
     color: white;
     font-size: 0.82rem;
     font-weight: 800;
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
 }
 
 .platform-logo-text {
@@ -440,7 +439,6 @@ button {
 .platform-btn-primary {
     background: var(--platform-primary);
     color: white;
-    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
 }
 
 .platform-btn-primary:hover {
@@ -450,7 +448,6 @@ button {
 .platform-btn-danger {
     background: var(--platform-danger);
     color: white;
-    box-shadow: 0 14px 28px rgba(220, 38, 38, 0.18);
 }
 
 .platform-btn-danger:hover {
@@ -461,7 +458,6 @@ button {
     background: var(--platform-btn-secondary-bg);
     color: var(--platform-btn-secondary-text);
     border-color: var(--platform-btn-secondary-border);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .platform-btn-secondary:hover {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
+import { AgGridReact } from "ag-grid-react";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import {
   LineChart,
   Line,
@@ -11,6 +13,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+
+// Register AG Grid modules
+ModuleRegistry.registerModules([AllCommunityModule]);
+
 import { useAuthStore } from "@/context/AuthContext";
 import {
   getPlayer,
@@ -68,7 +74,8 @@ type AttachmentPreviewRow = AttachmentRow & {
 
 type ExcelPreviewSheet = {
   name: string;
-  html: string;
+  rowData: any[];
+  columnDefs: any[];
 };
 
 type ExcelPreview = {
@@ -649,14 +656,44 @@ export default function PlayerDetailPage() {
           const sheetNames = workbook.SheetNames || [];
           const sheets = sheetNames.map((sheetName) => {
             const sheet = workbook.Sheets[sheetName];
+            if (!sheet) {
+              return { name: sheetName, rowData: [], columnDefs: [] };
+            }
+
+            // Get data as array of arrays to handle headers better
+            const rows = XLSX.utils.sheet_to_json(sheet, {
+              header: 1,
+              defval: "",
+            }) as any[][];
+            if (rows.length === 0) {
+              return { name: sheetName, rowData: [], columnDefs: [] };
+            }
+
+            // First row as headers
+            const headerRow = rows[0];
+            const columnDefs = headerRow.map((h, index) => ({
+              field: String(index),
+              headerName: h ? String(h) : `Column ${index + 1}`,
+              sortable: true,
+              filter: true,
+              resizable: true,
+              flex: 1,
+              minWidth: 100,
+            }));
+
+            // Rest as data
+            const rowData = rows.slice(1).map((row) => {
+              const obj: any = {};
+              row.forEach((cell, index) => {
+                obj[String(index)] = cell;
+              });
+              return obj;
+            });
+
             return {
               name: sheetName,
-              html: sheet
-                ? XLSX.utils.sheet_to_html(sheet, {
-                    editable: false,
-                    id: `excel-sheet-${sheetName.replace(/[^a-zA-Z0-9_-]/g, "_")}`,
-                  })
-                : "<div>No data available.</div>",
+              rowData,
+              columnDefs,
             };
           });
           setExcelPreview({
@@ -913,45 +950,33 @@ export default function PlayerDetailPage() {
 
           <div
             style={{
-              overflow: "auto",
+              height: "500px",
+              width: "100%",
               border: "1px solid var(--platform-border)",
               borderRadius: "8px",
-              background: "#fff",
-              padding: "0.75rem",
+              overflow: "hidden",
             }}
           >
-            {activeSheet ? (
-              <>
-                <style>{`
-                  .platform-excel-preview table {
-                    border-collapse: collapse;
-                    border-spacing: 0;
-                    background: #fff;
-                  }
-
-                  .platform-excel-preview table,
-                  .platform-excel-preview th,
-                  .platform-excel-preview td {
-                    border: 1px solid var(--platform-border);
-                  }
-
-                  .platform-excel-preview th,
-                  .platform-excel-preview td {
-                    padding: 0.45rem 0.6rem;
-                    vertical-align: top;
-                    white-space: pre-wrap;
-                  }
-                `}</style>
-                <div
-                  className="platform-excel-preview"
-                  style={{ minWidth: "max-content" }}
-                  dangerouslySetInnerHTML={{ __html: activeSheet.html }}
-                />
-              </>
+            {activeSheet && activeSheet.rowData.length > 0 ? (
+              <AgGridReact
+                rowData={activeSheet.rowData}
+                columnDefs={activeSheet.columnDefs}
+                defaultColDef={{
+                  resizable: true,
+                  sortable: true,
+                  filter: true,
+                }}
+              />
             ) : (
-              <p style={{ margin: 0, color: "var(--platform-text-muted)" }}>
-                No worksheet data available.
-              </p>
+              <div
+                style={{
+                  padding: "2rem",
+                  textAlign: "center",
+                  color: "var(--platform-text-muted)",
+                }}
+              >
+                No data available in this sheet.
+              </div>
             )}
           </div>
         </div>
